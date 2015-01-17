@@ -63,8 +63,8 @@ void loop() {
   readValues();
   computeMotorSpeeds();
   adjustMotors();
-  printValues();
-  delay(100);
+  //printValues();
+  //delay(100);
 }
 
 void readValues(){
@@ -73,6 +73,7 @@ void readValues(){
   leftBackwardState = digitalRead(leftBackward);
   rightForwardState = digitalRead(rightForward);
   rightBackwardState = digitalRead(rightBackward);
+  
   
   potValue = analogRead(pot);
 }
@@ -150,7 +151,7 @@ void computeMotorSpeeds(){
     else{
       rightPreviousState = 0;
       if(leftPreviousState != 2){
-        rightStartTime = rightStartTime;
+        rightStartTime = leftStartTime;
       }
       else{
         rightStartTime = millis();
@@ -175,7 +176,7 @@ void computeMotorSpeeds(){
     else{
       rightPreviousState = 1;
       if(leftPreviousState != 2){
-        rightStartTime = rightStartTime;
+        rightStartTime = leftStartTime;
       }
       else{
         rightStartTime = millis();
