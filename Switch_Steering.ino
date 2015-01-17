@@ -61,6 +61,7 @@ void setup() {
 void loop() {
 
   readValues();
+  computeMotorSpeeds();
   adjustMotors();
   printValues();
   delay(100);
@@ -76,7 +77,7 @@ void readValues(){
   potValue = analogRead(pot);
 }
 
-void adjustMotors(){
+void computeMotorSpeeds(){
   
   if(leftForwardState){
     
@@ -92,15 +93,17 @@ void adjustMotors(){
       }
     }
     else{
+      
       leftPreviousState = 0;
-      leftStartTime = millis();
+      
+      if(rightPreviousState != 2){
+        leftStartTime = rightStartTime;
+      }
+      else{
+        leftStartTime = millis();
+      }
       leftSpeed = startSpeed;
     }
-    leftFrontMotor->run(FORWARD);
-    leftBackMotor->run(FORWARD);
-    
-    leftFrontMotor->setSpeed(leftSpeed);
-    leftBackMotor->setSpeed(leftSpeed);
     
   }
   else if(leftBackwardState){
@@ -117,18 +120,17 @@ void adjustMotors(){
     }
     else{
       leftPreviousState = 1;
-      leftStartTime = millis();
+      if(rightPreviousState != 2){
+        leftStartTime = rightStartTime;
+      }
+      else{
+        leftStartTime = millis();
+      }
       leftSpeed = startSpeed;
     }
-    leftFrontMotor->run(BACKWARD);
-    leftBackMotor->run(BACKWARD);
-    
-    leftFrontMotor->setSpeed(leftSpeed);
-    leftBackMotor->setSpeed(leftSpeed);
   }
   else {
-    leftFrontMotor->run(RELEASE);
-    leftBackMotor->run(RELEASE);
+
     leftPreviousState = 2;
   }
   
@@ -147,14 +149,14 @@ void adjustMotors(){
     }
     else{
       rightPreviousState = 0;
-      rightStartTime = millis();
+      if(leftPreviousState != 2){
+        rightStartTime = rightStartTime;
+      }
+      else{
+        rightStartTime = millis();
+      }
       rightSpeed = startSpeed;
     }
-    rightFrontMotor->run(FORWARD);
-    rightBackMotor->run(FORWARD);
-    
-    rightFrontMotor->setSpeed(rightSpeed);
-    rightBackMotor->setSpeed(rightSpeed);
     
   }
   else if(rightBackwardState){
@@ -172,21 +174,54 @@ void adjustMotors(){
     }
     else{
       rightPreviousState = 1;
-      rightStartTime = millis();
-      rightSpeed = startSpeed
-      ;
+      if(leftPreviousState != 2){
+        rightStartTime = rightStartTime;
+      }
+      else{
+        rightStartTime = millis();
+      }
+      rightSpeed = startSpeed;
     }
-    rightFrontMotor->run(BACKWARD);
-    rightBackMotor->run(BACKWARD);
-    
-    rightFrontMotor->setSpeed(rightSpeed);
-    rightBackMotor->setSpeed(rightSpeed);
   }
   else {
-    rightFrontMotor->run(RELEASE);
-    rightBackMotor->run(RELEASE);
-    rightPreviousState = 3;
+    rightPreviousState = 2;
   }
+  
+}
+
+void adjustMotors(){
+  switch (leftPreviousState){
+    case 0:
+      leftFrontMotor->run(FORWARD);
+      leftBackMotor->run(FORWARD);
+      break;
+    case 1:
+      leftFrontMotor->run(BACKWARD);
+      leftBackMotor->run(BACKWARD);
+      break;
+    default:
+      leftFrontMotor->run(RELEASE);
+      leftBackMotor->run(RELEASE);
+  }
+  
+  switch (rightPreviousState){
+    case 0:
+      rightFrontMotor->run(FORWARD);
+      rightBackMotor->run(FORWARD);
+      break;
+    case 1:
+      rightFrontMotor->run(BACKWARD);
+      rightBackMotor->run(BACKWARD);
+      break;
+    default:
+      rightFrontMotor->run(RELEASE);
+      rightBackMotor->run(RELEASE);
+  }
+  
+  leftFrontMotor->setSpeed(leftSpeed);
+  leftBackMotor->setSpeed(leftSpeed);
+  rightFrontMotor->setSpeed(rightSpeed);
+  rightBackMotor->setSpeed(rightSpeed);
   
 }
 
