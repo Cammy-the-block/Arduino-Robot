@@ -1,6 +1,8 @@
-#include <Wire.h>                   //Include required headers
+#include <Wire.h>
+#include <Servo.h> //Include required headers
 #include <Adafruit_MotorShield.h>
 #include "utility/Adafruit_PWMServoDriver.h"
+
 
 //Attach motor shield
 Adafruit_MotorShield AFMS = Adafruit_MotorShield(); 
@@ -14,25 +16,40 @@ Adafruit_DCMotor *rightBackMotor = AFMS.getMotor(4);
 const int startSpeed = 80;
 const int maxSpeed = 255;
 
+const int clawHigherLimit = 180;
+const int clawLowerLimit = 0;
+const int clawSpeed = 10; //Lower is faster
+
+//name servos
+Servo claw;
+
 //Give names to input pins
 int leftForward = 3;
 int leftBackward = 4;
 int rightForward = 5;
 int rightBackward = 6;
 
-int pot = 2;
+int clawForward = 7;
+int clawBackward = 8;
 
 //Declare variables to hold speeds
 int leftSpeed = 0;
 int rightSpeed = 0;
 
+//Vars for servo positions
+int clawPosition = 90;
+
 //Variables to hold last sesen state of each side
 int leftPreviousState = 3;
 int rightPreviousState = 3;
 
+int clawState = 0;
+
 //Vars for when that state started
 unsigned long leftStartTime = 0;
 unsigned long rightStartTime = 0;
+
+unsigned long clawLastAdjust = 0;
 
 //Declare switch state variables
 int leftForwardState = 0;
@@ -40,7 +57,6 @@ int leftBackwardState = 0;
 int rightForwardState = 0;
 int rightBackwardState = 0;
 
-int potValue = 0;
 
 
 
@@ -54,15 +70,19 @@ void setup() {
   pinMode(rightForward, INPUT);
   pinMode(rightBackward, INPUT);
   
-  pinMode(pot, INPUT);
+  pinMode(clawForward, INPUT);
+  pinMode(clawBackward, INPUT);
   
+  claw.attach(9);
 }
 
 void loop() {
 
-  readValues();
-  computeMotorSpeeds();
-  adjustMotors();
+  readValues(); //read switch values
+  computeMotorSpeeds(); //compute motor speeds
+  computeServoSpeeds();
+  adjustServos();
+  adjustMotors(); //set motor speed and direction
   //printValues();
   //delay(100);
 }
@@ -74,8 +94,16 @@ void readValues(){
   rightForwardState = digitalRead(rightForward);
   rightBackwardState = digitalRead(rightBackward);
   
+  if(digitalRead(clawForward)){
+    clawState = 1;
+  }
+  else if(digitalRead(clawBackward)){
+    clawState = -1;
+  }
+  else{
+    clawState = 0;
+  }
   
-  potValue = analogRead(pot);
 }
 
 void computeMotorSpeeds(){
@@ -90,7 +118,7 @@ void computeMotorSpeeds(){
         leftSpeed = maxSpeed;
       }
       else {
-        leftSpeed = map(millis() - leftStartTime - 500, 0, 1000, 0, maxSpeed - startSpeed);
+        leftSpeed = map(millis() - leftStartTime - 1000, 0, 1000, startSpeed, maxSpeed);
       }
     }
     else{
@@ -116,7 +144,7 @@ void computeMotorSpeeds(){
         leftSpeed = maxSpeed;
       }
       else {
-        leftSpeed = map(millis() - leftStartTime - 500, 0, 1000, 0, maxSpeed - startSpeed);
+        leftSpeed = map(millis() - leftStartTime - 1000, 0, 1000, startSpeed, maxSpeed);
       }
     }
     else{
@@ -145,7 +173,7 @@ void computeMotorSpeeds(){
         rightSpeed = maxSpeed;
       }
       else {
-        rightSpeed = map(millis() - rightStartTime - 500, 0, 1000, 0, maxSpeed - startSpeed);
+        rightSpeed = map(millis() - rightStartTime - 1000, 0, 1000, startSpeed, maxSpeed);
       }
     }
     else{
@@ -170,7 +198,7 @@ void computeMotorSpeeds(){
         rightSpeed = maxSpeed;
       }
       else {
-        rightSpeed = map(millis() - rightStartTime - 500, 0, 1000, 0, maxSpeed - startSpeed);
+        rightSpeed = map(millis() - rightStartTime - 1000, 0, 1000, startSpeed, maxSpeed);
       }
     }
     else{
@@ -188,6 +216,19 @@ void computeMotorSpeeds(){
     rightPreviousState = 2;
   }
   
+}
+
+void computeServoSpeeds(){
+  if (clawPosition > clawLowerLimit && clawState == -1 && clawLastAdjust + clawSpeed < millis()){
+    clawPosition += clawState;
+    clawLastAdjust = millis();
+    Serial.println(clawPosition);
+  }
+  if (clawPosition < clawHigherLimit && clawState == 1 && clawLastAdjust + clawSpeed< millis()){
+    clawPosition += clawState;
+    clawLastAdjust = millis();
+    Serial.println(clawPosition);
+  }
 }
 
 void adjustMotors(){
@@ -224,6 +265,10 @@ void adjustMotors(){
   rightFrontMotor->setSpeed(rightSpeed);
   rightBackMotor->setSpeed(rightSpeed);
   
+}
+void adjustServos(){
+  claw.write(clawPosition);
+  Serial.println(clawPosition);
 }
 
 void printValues(){
