@@ -3,7 +3,6 @@
 #include <Adafruit_MotorShield.h>
 #include "utility/Adafruit_PWMServoDriver.h"
 
-
 //Attach motor shield
 Adafruit_MotorShield AFMS = Adafruit_MotorShield(); 
 //define motors
@@ -15,41 +14,40 @@ Adafruit_DCMotor *rightBackMotor = AFMS.getMotor(4);
 
 const int startSpeed = 80;
 const int maxSpeed = 255;
+//                           [0]  [1]     [2]       [3]      [4]    [5]
+//                           pin, pin, lowlimit, highlimit, speed, servo pin
+const int servoData [][6] = {{7,    8,        55,      117,    25,   9},  //shovel lift     [0]
+                            {2,     3,         0,      180,   200,  10},  //paw open close  [1]
+                            {4,     5,         0,      180,   200,  11},  //paw arm         [2]
+                            {12,   13,         0,      180,   200,  6}}; //shovel tilt      [3]
+                         
+int servoPosition [] = {90, 90, 120, 90};
 
-const int clawHigherLimit = 180;
-const int clawLowerLimit = 0;
-const int clawSpeed = 10; //Lower is faster
+int servoState [] = {0, 0, 0, 0};
 
-//name servos
-Servo claw;
+unsigned long servoLastAdjust[] = {0, 0, 0, 0};
+                         
+Servo servos[4];
 
 //Give names to input pins
-int leftForward = 3;
-int leftBackward = 4;
-int rightForward = 5;
-int rightBackward = 6;
-
-int clawForward = 7;
-int clawBackward = 8;
+int leftForward = 14;
+int leftBackward = 15;
+int rightForward = 16;
+int rightBackward = 17;
 
 //Declare variables to hold speeds
 int leftSpeed = 0;
 int rightSpeed = 0;
 
-//Vars for servo positions
-int clawPosition = 90;
-
 //Variables to hold last sesen state of each side
 int leftPreviousState = 3;
 int rightPreviousState = 3;
 
-int clawState = 0;
+int pawState = 0;
 
 //Vars for when that state started
 unsigned long leftStartTime = 0;
 unsigned long rightStartTime = 0;
-
-unsigned long clawLastAdjust = 0;
 
 //Declare switch state variables
 int leftForwardState = 0;
@@ -60,9 +58,9 @@ int rightBackwardState = 0;
 
 
 
-void setup() {                
+void setup() {  
+  Serial.begin(9600);            
   // start Serial
-  Serial.begin(9600);
    AFMS.begin();
   //Set pins as inputs
   pinMode(leftForward, INPUT); 
@@ -70,21 +68,20 @@ void setup() {
   pinMode(rightForward, INPUT);
   pinMode(rightBackward, INPUT);
   
-  pinMode(clawForward, INPUT);
-  pinMode(clawBackward, INPUT);
   
-  claw.attach(9);
+  for(int x = 0; x < 4; x++){
+    servos[x].attach(servoData[x][5]); 
+  }
+  
 }
 
 void loop() {
-
   readValues(); //read switch values
   computeMotorSpeeds(); //compute motor speeds
-  computeServoSpeeds();
   adjustServos();
-  adjustMotors(); //set motor speed and direction
-  //printValues();
-  //delay(100);
+  adjustMotors();
+  printValues();
+  delay(1);
 }
 
 void readValues(){
@@ -94,22 +91,23 @@ void readValues(){
   rightForwardState = digitalRead(rightForward);
   rightBackwardState = digitalRead(rightBackward);
   
-  if(digitalRead(clawForward)){
-    clawState = 1;
+  for(int x = 0; x < 4; x++){
+    
+    if(digitalRead(servoData[x][0])){
+      servoState[x] = 1;
+    }
+    else if(digitalRead(servoData[x][1])){
+      servoState[x] = -1;
+    }
+    else{
+      servoState[x] = 0;
+    }
   }
-  else if(digitalRead(clawBackward)){
-    clawState = -1;
-  }
-  else{
-    clawState = 0;
-  }
-  
 }
 
 void computeMotorSpeeds(){
   
   if(leftForwardState){
-    
     if(leftPreviousState == 0){
       if(millis() < leftStartTime + 1000){
         leftSpeed = startSpeed;
@@ -130,8 +128,9 @@ void computeMotorSpeeds(){
       }
       else{
         leftStartTime = millis();
+        leftSpeed = startSpeed;
       }
-      leftSpeed = startSpeed;
+      
     }
     
   }
@@ -151,11 +150,12 @@ void computeMotorSpeeds(){
       leftPreviousState = 1;
       if(rightPreviousState != 2){
         leftStartTime = rightStartTime;
+        
       }
       else{
         leftStartTime = millis();
+        leftSpeed = startSpeed;
       }
-      leftSpeed = startSpeed;
     }
   }
   else {
@@ -183,8 +183,8 @@ void computeMotorSpeeds(){
       }
       else{
         rightStartTime = millis();
+        rightSpeed = startSpeed;
       }
-      rightSpeed = startSpeed;
     }
     
   }
@@ -208,8 +208,9 @@ void computeMotorSpeeds(){
       }
       else{
         rightStartTime = millis();
+        rightSpeed = startSpeed;
       }
-      rightSpeed = startSpeed;
+      
     }
   }
   else {
@@ -218,17 +219,24 @@ void computeMotorSpeeds(){
   
 }
 
-void computeServoSpeeds(){
-  if (clawPosition > clawLowerLimit && clawState == -1 && clawLastAdjust + clawSpeed < millis()){
-    clawPosition += clawState;
-    clawLastAdjust = millis();
-    Serial.println(clawPosition);
+void adjustServos(){
+  for(int x = 0; x < 4; x++){
+    servoPosition[x] = computeServoSpeed(servoPosition[x], servoData[x][2], servoData[x][3], servoState[x], servoLastAdjust[x], servoData[x][4]);
+    servos[x].write(servoPosition[x]);
+    //Serial.println(servoPosition[x]);
   }
-  if (clawPosition < clawHigherLimit && clawState == 1 && clawLastAdjust + clawSpeed< millis()){
-    clawPosition += clawState;
-    clawLastAdjust = millis();
-    Serial.println(clawPosition);
+}
+
+int computeServoSpeed(int position, const int lowerLimit, const int higherLimit, int state, unsigned long& lastAdjust, const int speed){
+  if (position > lowerLimit && state == -1 && lastAdjust + (1000 / speed) < millis()){
+    position -= 1;
+    lastAdjust = millis();
   }
+  if (position < higherLimit && state == 1 && lastAdjust + (1000 / speed)< millis()){
+    position += 1;
+    lastAdjust = millis();
+  }
+  return position;
 }
 
 void adjustMotors(){
@@ -266,12 +274,10 @@ void adjustMotors(){
   rightBackMotor->setSpeed(rightSpeed);
   
 }
-void adjustServos(){
-  claw.write(clawPosition);
-  Serial.println(clawPosition);
-}
 
 void printValues(){
+  Serial.println(servoPosition[0]);
+  /*
   Serial.print(leftForwardState);
   Serial.print(", ");
   Serial.print(leftBackwardState);
@@ -280,4 +286,6 @@ void printValues(){
   Serial.print(", ");
   Serial.print(rightBackwardState);
   Serial.println(", ");
+  */
+  
 }
