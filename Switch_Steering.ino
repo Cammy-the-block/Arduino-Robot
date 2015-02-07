@@ -16,12 +16,12 @@ const int startSpeed = 80;
 const int maxSpeed = 255;
 //                           [0]  [1]     [2]       [3]      [4]    [5]
 //                           pin, pin, lowlimit, highlimit, speed, servo pin
-const int servoData [][6] = {{7,    8,        55,      117,    25,   9},  //shovel lift     [0]
+const int servoData [][6] = {{7,    8,        55,      144,    25,   9},  //shovel lift     [0]
                             {2,     3,         0,      180,   200,  10},  //paw open close  [1]
                             {4,     5,         0,      180,   200,  11},  //paw arm         [2]
                             {12,   13,         0,      180,   200,  6}}; //shovel tilt      [3]
                          
-int servoPosition [] = {90, 90, 120, 90};
+int servoPosition [] = {110, 90, 120, 90};
 
 int servoState [] = {0, 0, 0, 0};
 
